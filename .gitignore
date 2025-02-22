@@ -1,0 +1,58 @@
+# Python-specific ignores
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+*.egg
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Virtual environment
+venv/
+.env*/
+env/
+*.venv
+
+# Environment files (except .env template)
+.env
+!.env.example
+
+# Dependency management
+Pipfile.lock
+
+# IDE and editor files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Testing
+.pytest_cache/
+coverage/
+*.coverage
+.coverage.*
+htmlcov/
+junit.xml
+
+# Logs
+*.log
+logs/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Production artifacts
+*.bak
+*.swp
+*.tmp
+*.bak
+
+# Miscellaneous
+*.zip
+*.tar.gz
+*.tgz
