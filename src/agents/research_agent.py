@@ -1,9 +1,7 @@
 from crewai import Agent
-from config.settings import Settings
+from src.config.settings import Settings
 
 class ResearchAgent:
-    """Agent that performs research using OpenAI LLM."""
-
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
 
@@ -15,5 +13,5 @@ class ResearchAgent:
             verbose=False,
             allow_delegation=False,
             max_iter=10,
-            llm="openai/" + self.settings.openai_model
+            llm=f"openai/{self.settings.openai_model}"
         )
