@@ -21,22 +21,6 @@ This template showcases a Slack bot powered by CrewAI, featuring a research and 
 - Comprehensive unit tests using `pytest` (v8.3.2) and `pytest-asyncio` (v0.23.8)
 - Python 3.12+ compatibility with modern type hints
 
-## Project Structure
-crewai_slack_bot/
-├── src/
-│   ├── config/          # Configuration loading
-│   ├── agents/          # Agent definitions
-│   ├── tasks/           # Task definitions
-│   ├── crew/            # Crew implementations
-│   ├── slack/           # Slack app and message handling
-│   ├── utils/           # Logging and formatting utilities
-├── tests/               # Unit tests
-├── .env                 # Environment variables
-├── main.py             # Entry point
-├── pyproject.toml      # Dependencies and metadata
-├── .gitignore          # Git ignore rules
-└── README.md           # Project documentation
-
 
 
 ## Setup
