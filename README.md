@@ -1,37 +1,124 @@
 # CrewAI Production Ready Template
 
-A production-ready template for building multi-agent systems with [CrewAI](https://github.com/joaomdmoura/crewAI), integrated with Slack using `slack-bolt`. This project provides a scalable, modular foundation for developing AI-driven workflows with multiple agents and tools, designed for real-world deployment.
+A production-ready template for building multi-agent systems with [CrewAI](https://github.com/joaomdmoura/crewAI). This project provides a scalable, modular foundation for developing AI-driven workflows with multiple agents and tools, designed for real-world deployment. Currently includes Slack integration as an example, with an architecture designed to support multiple integrations.
 
 ## Overview
 
-This template showcases a Slack bot powered by CrewAI, featuring a research and writing crew as an example. It’s built with best practices to support:
+This template showcases a production-ready CrewAI implementation, featuring a research and writing crew as an example. It's built with best practices to support:
 - **Multi-Agent Development**: Easily add new agents and tools via modular design.
 - **Production Readiness**: Robust error handling, structured logging, and configuration management.
 - **Scalability**: Abstract crew base class and dependency injection for flexibility.
-- **Rich Text Responses**: Formatted Slack messages using `mrkdwn`.
+- **Containerization**: Docker support with multi-stage builds and production-grade process management.
+- **Extensible Integrations**: Modular design supporting multiple integration channels (Slack provided as example).
 
 ## Features
 
 - Multi-agent system with CrewAI (v0.102.0)
-- Slack integration via `slack-bolt` (v1.22.0)
+- Slack integration via `slack-bolt` (v1.22.0) as an example integration
 - Agents powered by OpenAI (v1.63.2) and Anthropic (v0.34.1) LLMs
 - Configuration via `.env` with `python-dotenv` (v1.0.1)
 - Structured JSON logging with `structlog` (v24.4.0)
 - Dependency management with `pyproject.toml`
 - Comprehensive unit tests using `pytest` (v8.3.2) and `pytest-asyncio` (v0.23.8)
 - Python 3.12+ compatibility with modern type hints
-
-
+- Docker support with multi-stage builds
+- Process management with Supervisor
+- Health checks and monitoring
+- Production-grade logging configuration
 
 ## Setup
 
 ### Prerequisites
-- Python 3.12+
-- Slack app with Bot Token (`xoxb-...`) and App Token (`xapp-...`)
+- Python 3.12+ (for local development)
+- Docker and Docker Compose (for containerized deployment)
 - OpenAI and Anthropic API keys
+- Slack app with Bot Token (`xoxb-...`) and App Token (`xapp-...`) (if using Slack integration)
 
-### Installation
+### Local Installation
 1. **Clone the Repository**:
    ```bash
    git clone https://github.com/raju-deriv/crewai-production-ready-template
    cd crewai-production-ready-template
+   ```
+
+2. **Set Up Environment**:
+   ```bash
+   cp .env.template .env
+   # Edit .env with your configuration
+   ```
+
+3. **Install Dependencies**:
+   ```bash
+   pip install -e .
+   ```
+
+### Docker Deployment
+
+1. **Environment Setup**:
+   ```bash
+   cp .env.template .env
+   # Edit .env with your production configuration
+   ```
+
+2. **Build and Start Services**:
+   ```bash
+   docker compose up -d --build
+   ```
+
+3. **View Logs**:
+   ```bash
+   # View service logs
+   docker compose logs -f crewai-agent-service
+   
+   # View specific log files
+   docker compose exec crewai-agent-service tail -f /app/logs/crewai.log
+   ```
+
+4. **Health Check**:
+   ```bash
+   docker compose exec crewai-agent-service supervisorctl status
+   ```
+
+### Production Deployment Considerations
+
+1. **Resource Management**:
+   - Container memory limits are set to 2GB max with 1GB reservation
+   - Adjust `deploy.resources` in `docker-compose.yml` based on your needs
+
+2. **Logging**:
+   - JSON logging enabled for structured log aggregation
+   - Log rotation configured for both application and Docker logs
+   - Logs directory mounted as volume for persistence
+   - Configure log aggregation based on your infrastructure (e.g., ELK, Splunk)
+
+3. **Process Management**:
+   - Supervisor manages the application process
+   - Automatic restart on failure
+   - Health checks ensure service availability
+   - Process logs are rotated to prevent disk space issues
+
+4. **Security**:
+   - Multi-stage Docker builds for minimal attack surface
+   - Non-root user for running the application
+   - Environment variables for sensitive configuration
+   - Supervisor socket protected with permissions
+
+5. **Monitoring**:
+   - Health check endpoint for container orchestration
+   - Supervisor status for process monitoring
+   - JSON-formatted logs for easy parsing
+   - Configure additional monitoring based on your infrastructure
+
+### Adding New Integrations
+
+The template is designed to be extensible. To add a new integration:
+
+1. Create a new module in `src/` for your integration
+2. Implement the integration using the existing patterns
+3. Update the configuration in `src/config/settings.py`
+4. Add any new environment variables to `.env.template`
+5. Update tests as needed
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
