@@ -3,8 +3,10 @@ from slack_bolt.adapter.socket_mode import SocketModeHandler
 from src.config.settings import Settings
 from src.slack.message_handler import MessageHandler
 from src.crew.base_crew import BaseCrew
+from src.storage.redis_client import RedisConversationStore
 from typing import Dict, Any, Callable
 import structlog
+import atexit
 
 logger = structlog.get_logger(__name__)
 
@@ -14,7 +16,21 @@ class SlackApp:
     def __init__(self, settings: Settings, crew: BaseCrew):
         self.settings = settings
         self.app = App(token=settings.slack_bot_token)
-        self.message_handler = MessageHandler(crew)
+        
+        # Initialize Redis conversation store
+        self.conversation_store = RedisConversationStore(
+            host=settings.redis_host,
+            port=settings.redis_port,
+            password=settings.redis_password,
+            db=settings.redis_db,
+            ssl=settings.redis_ssl,
+            ttl=settings.redis_ttl
+        )
+        
+        # Register cleanup on exit
+        atexit.register(self._cleanup)
+        
+        self.message_handler = MessageHandler(crew, self.conversation_store)
         # Store handlers for test access
         self.handle_message: Callable[[Dict[str, str], Any, Any], None] = None
         self.handle_app_mention: Callable[[Dict[str, str], Any], None] = None
@@ -35,7 +51,12 @@ class SlackApp:
                 if not event.get("thread_ts") and f"<@{app_id}>" not in text:
                     logger.info("Message not directed to bot, ignoring")
                     return
-                self.message_handler.process_message(text, say, thread_ts)
+                self.message_handler.process_message(
+                    text=text,
+                    say=say,
+                    thread_ts=thread_ts,
+                    channel_id=channel_id
+                )
                 logger.info("Message processed successfully")
             except Exception as e:
                 logger.error(f"Error handling message: {str(e)}", exc_info=True)
@@ -59,4 +80,14 @@ class SlackApp:
             handler.start()
         except Exception as e:
             logger.error("Error starting Slack app", error=str(e), exc_info=True)
+            self._cleanup()
             raise
+
+    def _cleanup(self) -> None:
+        """Cleanup resources on shutdown."""
+        try:
+            if hasattr(self, 'conversation_store'):
+                self.conversation_store.close()
+                logger.info("Closed Redis connection")
+        except Exception as e:
+            logger.error("Error during cleanup", error=str(e))

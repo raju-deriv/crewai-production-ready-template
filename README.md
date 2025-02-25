@@ -10,12 +10,14 @@ This template showcases a production-ready CrewAI implementation, featuring a re
 - **Scalability**: Abstract crew base class and dependency injection for flexibility.
 - **Containerization**: Docker support with multi-stage builds and production-grade process management.
 - **Extensible Integrations**: Modular design supporting multiple integration channels (Slack provided as example).
+- **Conversation History**: Redis-backed conversation tracking with automatic expiration.
 
 ## Features
 
 - Multi-agent system with CrewAI (v0.102.0)
 - Slack integration via `slack-bolt` (v1.22.0) as an example integration
 - Agents powered by OpenAI (v1.63.2) and Anthropic (v0.34.1) LLMs
+- Conversation history with Redis persistence (1-day retention)
 - Configuration via `.env` with `python-dotenv` (v1.0.1)
 - Structured JSON logging with `structlog` (v24.4.0)
 - Dependency management with `pyproject.toml`
@@ -25,6 +27,8 @@ This template showcases a production-ready CrewAI implementation, featuring a re
 - Process management with Supervisor
 - Health checks and monitoring
 - Production-grade logging configuration
+- Message serialization with msgpack for efficient storage
+- Automatic conversation cleanup with TTL
 
 ## Setup
 
@@ -33,6 +37,7 @@ This template showcases a production-ready CrewAI implementation, featuring a re
 - Docker and Docker Compose (for containerized deployment)
 - OpenAI and Anthropic API keys
 - Slack app with Bot Token (`xoxb-...`) and App Token (`xapp-...`) (if using Slack integration)
+- Redis (provided via Docker Compose for production)
 
 ### Local Installation
 1. **Clone the Repository**:
@@ -57,7 +62,10 @@ This template showcases a production-ready CrewAI implementation, featuring a re
 1. **Environment Setup**:
    ```bash
    cp .env.template .env
-   # Edit .env with your production configuration
+   # Edit .env with your production configuration including:
+   # - API keys
+   # - Redis password
+   # - Other service configurations
    ```
 
 2. **Build and Start Services**:
@@ -76,13 +84,18 @@ This template showcases a production-ready CrewAI implementation, featuring a re
 
 4. **Health Check**:
    ```bash
+   # Check application status
    docker compose exec crewai-agent-service supervisorctl status
+   
+   # Check Redis status
+   docker compose exec redis redis-cli -a "${REDIS_PASSWORD}" ping
    ```
 
 ### Production Deployment Considerations
 
 1. **Resource Management**:
-   - Container memory limits are set to 2GB max with 1GB reservation
+   - CrewAI Agent: 2GB max with 1GB reservation
+   - Redis: 512MB max with 256MB reservation
    - Adjust `deploy.resources` in `docker-compose.yml` based on your needs
 
 2. **Logging**:
@@ -102,12 +115,22 @@ This template showcases a production-ready CrewAI implementation, featuring a re
    - Non-root user for running the application
    - Environment variables for sensitive configuration
    - Supervisor socket protected with permissions
+   - Redis password protection enabled
+   - SSL/TLS support for Redis connections
 
 5. **Monitoring**:
-   - Health check endpoint for container orchestration
+   - Health check endpoints for container orchestration
    - Supervisor status for process monitoring
+   - Redis monitoring for conversation storage
    - JSON-formatted logs for easy parsing
    - Configure additional monitoring based on your infrastructure
+
+6. **Data Management**:
+   - Conversation history stored in Redis with 1-day TTL
+   - Automatic cleanup of expired conversations
+   - Redis persistence enabled with appendonly
+   - Volume mounting for Redis data persistence
+   - Efficient message serialization with msgpack
 
 ### Adding New Integrations
 
@@ -118,6 +141,32 @@ The template is designed to be extensible. To add a new integration:
 3. Update the configuration in `src/config/settings.py`
 4. Add any new environment variables to `.env.template`
 5. Update tests as needed
+
+### Redis Configuration
+
+The template uses Redis for storing conversation history. Key features:
+
+1. **Storage Format**:
+   - Conversations are stored by channel and thread
+   - Messages include timestamp, type, and content
+   - Data is serialized using msgpack for efficiency
+
+2. **TTL Management**:
+   - Default 1-day retention for conversations
+   - TTL is extended on conversation access
+   - Automatic cleanup of expired data
+
+3. **Error Handling**:
+   - Graceful degradation on Redis failures
+   - Continued operation without history if Redis is unavailable
+   - Automatic reconnection attempts
+
+4. **Production Setup**:
+   - Password protection enabled
+   - SSL/TLS support
+   - Persistence with appendonly
+   - Resource limits and monitoring
+   - Health checks
 
 ## Contributing
 

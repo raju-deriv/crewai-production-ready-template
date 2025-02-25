@@ -17,6 +17,7 @@ class Settings:
         self._load_environment()
         self._validate_and_set_variables()
         self._configure_crewai_environment()
+        self._configure_redis()
         self._log_initialization()
 
     def _load_environment(self) -> None:
@@ -54,8 +55,27 @@ class Settings:
             self.openai_api_base = os.getenv("OPENAI_API_BASE")
             self.anthropic_api_base = os.getenv("ANTHROPIC_API_BASE")
 
+            # Redis configuration
+            self.redis_host = self._get_required("REDIS_HOST", "redis")
+            self.redis_port = int(self._get_required("REDIS_PORT", "6379"))
+            self.redis_password = os.getenv("REDIS_PASSWORD")
+            self.redis_db = int(self._get_required("REDIS_DB", "0"))
+            self.redis_ssl = self._get_required("REDIS_SSL", "true").lower() == "true"
+            self.redis_ttl = int(self._get_required("REDIS_TTL", "86400"))
+
         except ValueError as e:
             raise EnvironmentError(f"Environment validation failed: {str(e)}")
+
+    def _configure_redis(self) -> None:
+        """Configure Redis-specific settings."""
+        logger.info(
+            "Redis configuration",
+            host=self.redis_host,
+            port=self.redis_port,
+            db=self.redis_db,
+            ssl=self.redis_ssl,
+            ttl=self.redis_ttl
+        )
 
     def _configure_crewai_environment(self) -> None:
         """Configure CrewAI-specific environment variables."""
