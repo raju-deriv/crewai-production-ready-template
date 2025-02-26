@@ -15,7 +15,7 @@ class MessageHandler:
         self.conversation_store = conversation_store
         self.logger = structlog.get_logger(__name__)
 
-    def process_message(self, text: str, say: Any, thread_ts: str, channel_id: str) -> None:
+    def process_message(self, text: str, say: Any, thread_ts: str, channel_id: str, client: Any = None) -> None:
         """Process incoming messages and handle responses."""
         try:
             # Store incoming message
@@ -27,6 +27,17 @@ class MessageHandler:
             self.conversation_store.store_message(channel_id, thread_ts, message_data)
             self.logger.debug("Stored incoming message", message_data=message_data)
 
+            # Send an initial "processing" message
+            processing_message = ":hourglass_flowing_sand: `Processing your request...` :writing_hand:"
+            processing_response = say(
+                text=processing_message,
+                thread_ts=thread_ts,
+                mrkdwn=True
+            )
+            
+            # Get the timestamp of the processing message so we can delete it later
+            processing_ts = processing_response.get('ts')
+            
             # Get conversation history for context
             history = self.get_conversation_history(channel_id, thread_ts)
             
@@ -36,12 +47,50 @@ class MessageHandler:
                 "conversation_history": history
             }
             response = self.crew.run(inputs=inputs)
+            
+            # Delete the processing message if we have its timestamp
+            if processing_ts and client:
+                try:
+                    # Use the client to delete the message
+                    client.chat_delete(
+                        channel=channel_id,
+                        ts=processing_ts
+                    )
+                    self.logger.debug("Deleted processing message", ts=processing_ts)
+                except Exception as e:
+                    self.logger.error("Failed to delete processing message", error=str(e), exc_info=True)
+            
+            # Send the actual response
             self._send_response(response, say, thread_ts, channel_id)
 
         except RedisConnectionError as e:
             self.logger.error("Redis connection error", error=str(e))
+            # Send an initial "processing" message
+            processing_message = ":hourglass_flowing_sand: `Processing your request...` :writing_hand:"
+            processing_response = say(
+                text=processing_message,
+                thread_ts=thread_ts,
+                mrkdwn=True
+            )
+            
+            # Get the timestamp of the processing message so we can delete it later
+            processing_ts = processing_response.get('ts')
+            
             # Continue processing even if Redis fails
             response = self.crew.run(inputs={"topic": text})
+            
+            # Delete the processing message if we have its timestamp
+            if processing_ts and client:
+                try:
+                    # Use the client to delete the message
+                    client.chat_delete(
+                        channel=channel_id,
+                        ts=processing_ts
+                    )
+                    self.logger.debug("Deleted processing message", ts=processing_ts)
+                except Exception as e:
+                    self.logger.error("Failed to delete processing message", error=str(e), exc_info=True)
+            
             self._send_response(response, say, thread_ts, channel_id, store_history=False)
 
         except Exception as e:

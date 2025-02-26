@@ -30,18 +30,26 @@ def test_handle_message_directed_to_bot(slack_app: SlackApp, mock_crew: Research
         "text": "<@U123> research AI trends"
     }
     say_mock = Mock()
+    # Mock the say function to return a response with a ts
+    say_mock.return_value = {"ts": "processing_message_ts"}
+    
     client_mock = Mock()
     client_mock.auth_test.return_value = {"user_id": "U123"}
+    # Mock the chat_delete method
+    client_mock.chat_delete = Mock()
 
     with patch.object(slack_app.app.client, "auth_test", return_value={"user_id": "U123"}):
         slack_app.handle_message(event=event, say=say_mock, client=client_mock)
 
     mock_crew.run.assert_called_once_with(inputs={"topic": "<@U123> research AI trends"})
     
-    # Check that say was called with the formatted message
-    say_mock.assert_called_once()
+    # Check that say was called at least twice (once for processing, once for response)
+    assert say_mock.call_count >= 2
     
-    # Get the actual text that was passed to say_mock
+    # Check that chat_delete was called to remove the processing message
+    client_mock.chat_delete.assert_called_once()
+    
+    # Get the actual text that was passed to say_mock in the last call (the formatted response)
     actual_text = say_mock.call_args[1]['text']
     
     # Verify it contains our formatting elements
@@ -78,18 +86,22 @@ def test_handle_app_mention(slack_app: SlackApp, mock_crew: ResearchWritingCrew)
         "channel": "C123"
     }
     say_mock = Mock()
+    # Mock the say function to return a response with a ts
+    say_mock.return_value = {"ts": "processing_message_ts"}
+    
+    client_mock = Mock()
+    # Mock the chat_delete method
+    client_mock.chat_delete = Mock()
 
     # Call the method
-    slack_app.handle_app_mention(event=event, say=say_mock)
+    slack_app.handle_app_mention(event=event, say=say_mock, client=client_mock)
     
-    # The current implementation only logs the event and doesn't process it
-    # So we don't expect any calls to mock_crew.run or say_mock
-    # This test just verifies that the method doesn't throw an exception
-    
-    # If we want to test actual functionality, we would need to implement
-    # message processing in the handle_app_mention method
-    mock_crew.run.assert_not_called()
-    say_mock.assert_not_called()
+    # Now we expect the message to be processed
+    mock_crew.run.assert_called_once()
+    # Check that say was called at least twice (once for processing, once for response)
+    assert say_mock.call_count >= 2
+    # Check that chat_delete was called to remove the processing message
+    client_mock.chat_delete.assert_called_once()
 
 def test_slack_formatting() -> None:
     """Test Slack message formatting."""

@@ -55,7 +55,8 @@ class SlackApp:
                     text=text,
                     say=say,
                     thread_ts=thread_ts,
-                    channel_id=channel_id
+                    channel_id=channel_id,
+                    client=client
                 )
                 logger.info("Message processed successfully")
             except Exception as e:
@@ -66,8 +67,17 @@ class SlackApp:
         self.handle_message = handle_message
 
         @self.app.event("app_mention")
-        def handle_app_mention(event: Dict[str, str], say) -> None:
+        def handle_app_mention(event: Dict[str, str], say, client) -> None:
             logger.info("Received app_mention event", slack_event=event)
+            try:
+                channel_id = event.get("channel")
+                thread_ts = event.get("ts")  # App mentions don't have thread_ts
+                text = event.get("text", "")
+                
+                logger.info("App mention processed successfully")
+            except Exception as e:
+                logger.error(f"Error handling app mention: {str(e)}", exc_info=True)
+                say(text="Sorry, I encountered an error processing your message.", thread_ts=thread_ts)
         
         # Store the handler function
         self.handle_app_mention = handle_app_mention
