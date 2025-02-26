@@ -1,7 +1,7 @@
 from src.slack.app import SlackApp
 from src.config.settings import Settings
-from src.crew.research_writing_crew import ResearchWritingCrew  # Updated import
-from src.utils.logging import configure_logging  # Updated import
+from src.crew.master_crew import MasterCrew
+from src.utils.logging import configure_logging
 
 import sys
 import structlog
@@ -9,7 +9,7 @@ import structlog
 logger = structlog.get_logger(__name__)
 
 def main() -> None:
-    """Entry point for the Slack bot application."""
+    """Entry point for the CrewAI agent service."""
     try:
         # Configure logging first
         configure_logging()
@@ -25,12 +25,12 @@ def main() -> None:
             logger.error("Failed to load settings", error=str(e))
             sys.exit(1)
         
-        # Initialize crew
+        # Initialize master crew
         try:
-            crew = ResearchWritingCrew(settings)
-            logger.info("Crew initialized successfully")
+            crew = MasterCrew(settings)
+            logger.info("Master crew initialized successfully")
         except Exception as e:
-            logger.error("Failed to initialize crew", error=str(e), exc_info=True)
+            logger.error("Failed to initialize master crew", error=str(e), exc_info=True)
             sys.exit(1)
         
         # Initialize and start Slack app

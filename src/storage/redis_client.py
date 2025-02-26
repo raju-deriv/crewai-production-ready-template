@@ -26,17 +26,21 @@ class RedisConversationStore:
             ttl: Time to live for conversations in seconds (default: 1 day)
         """
         self.ttl = ttl
-        self._pool = redis.ConnectionPool(
-            host=host,
-            port=port,
-            password=password,
-            db=db,
-            ssl=ssl,
-            decode_responses=False,  # We'll handle decoding with msgpack
-            socket_timeout=5,
-            socket_connect_timeout=5,
-            retry_on_timeout=True
-        )
+        connection_kwargs = {
+            "host": host,
+            "port": port,
+            "password": password,
+            "db": db,
+            "decode_responses": False,  # We'll handle decoding with msgpack
+            "socket_timeout": 5,
+            "socket_connect_timeout": 5,
+            "retry_on_timeout": True
+        }
+        # Only add ssl if it's enabled
+        if ssl:
+            connection_kwargs["connection_class"] = redis.connection.SSLConnection
+
+        self._pool = redis.ConnectionPool(**connection_kwargs)
         self._redis: Optional[redis.Redis] = None
         logger.info("Redis connection pool initialized", 
                    host=host, port=port, db=db, ssl=ssl)

@@ -65,6 +65,6 @@ if ! check_env_vars; then
     exit 1
 fi
 
-# Start the application
+# Start the application with error output
 echo "Starting CrewAI agent service..."
-exec python -u main.py
+exec python -u main.py 2>&1

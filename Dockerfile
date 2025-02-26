@@ -27,11 +27,13 @@ COPY . .
 
 # Create non-root user and set permissions
 RUN useradd -m -r crewai && \
-    chown -R crewai:crewai /app/logs && \
+    mkdir -p /app/logs && \
+    chown -R crewai:crewai /app && \
     chown -R crewai:crewai /var/log/supervisor && \
     chown -R crewai:crewai /var/run/supervisor && \
     chmod 755 /var/log/supervisor /var/run/supervisor && \
-    chmod +x /app/start.sh
+    chmod +x /app/start.sh && \
+    chmod 777 /app/logs
 
 # Switch to non-root user
 USER crewai

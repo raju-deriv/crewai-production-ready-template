@@ -63,6 +63,11 @@ class Settings:
             self.redis_ssl = self._get_required("REDIS_SSL", "true").lower() == "true"
             self.redis_ttl = int(self._get_required("REDIS_TTL", "86400"))
 
+            # Weather API configuration (using WeatherAPI.com instead of OpenWeather)
+            self.openweather_api_key = self._get_required("OPENWEATHER_API_KEY")
+            # Note: We're still using the OPENWEATHER_API_KEY env variable name for backward compatibility
+            # but it should now contain a WeatherAPI.com API key
+
         except ValueError as e:
             raise EnvironmentError(f"Environment validation failed: {str(e)}")
 
