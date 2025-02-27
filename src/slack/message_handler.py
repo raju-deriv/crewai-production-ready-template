@@ -101,9 +101,17 @@ class MessageHandler:
     def _send_response(self, response: str, say: Any, thread_ts: str, 
                       channel_id: str, store_history: bool = True) -> None:
         """Send formatted response message and store in history."""
-        formatted_response = format_slack_message(response) if response else "*Processing your request...*"
+        # Detect if this is likely a conversation response
+        message_type = self._detect_message_type(response)
+        
+        formatted_response = format_slack_message(
+            response, 
+            message_type=message_type
+        ) if response else "*Processing your request...*"
+        
         self.logger.debug("Sending formatted response", 
-                         response=formatted_response, 
+                         response=formatted_response,
+                         message_type=message_type,
                          thread_ts=thread_ts)
 
         say(
@@ -111,7 +119,7 @@ class MessageHandler:
             thread_ts=thread_ts,
             mrkdwn=True
         )
-
+        
         if store_history:
             try:
                 message_data = {
@@ -123,6 +131,61 @@ class MessageHandler:
                 self.logger.debug("Stored outgoing message", message_data=message_data)
             except RedisConnectionError as e:
                 self.logger.error("Failed to store response in history", error=str(e))
+    
+    def _detect_message_type(self, response: str) -> str:
+        """
+        Detect the type of message based on content heuristics.
+        
+        Args:
+            response: The response text
+            
+        Returns:
+            The detected message type ('conversation', 'weather', 'research', etc.)
+        """
+        # Convert to lowercase for case-insensitive matching
+        lower_response = response.lower()
+        
+        # Check for conversation patterns
+        conversation_patterns = [
+            # Greetings
+            "hello", "hi there", "hey", "greetings", 
+            # Simple responses
+            "you're welcome", "thank you", "thanks for", 
+            # Clarification questions
+            "could you please clarify", "i'm not sure what you mean",
+            "can you provide more details", "would you like me to",
+            # Short responses (less than 100 characters are likely conversational)
+            # But only if they don't contain weather or research indicators
+            # This should be checked last
+        ]
+        
+        # Check for weather patterns
+        weather_patterns = [
+            "temperature", "humidity", "wind speed", "precipitation",
+            "forecast", "weather", "sunny", "cloudy", "rainy", "celsius", 
+            "fahrenheit", "degrees", "climate", "atmospheric"
+        ]
+        
+        # Check for research patterns
+        research_patterns = [
+            "according to", "research shows", "studies indicate",
+            "analysis", "findings", "data suggests", "evidence",
+            "conclusion", "summary", "in conclusion"
+        ]
+        
+        # Check for patterns in order of specificity
+        if any(pattern in lower_response for pattern in weather_patterns):
+            return "weather"
+        elif any(pattern in lower_response for pattern in research_patterns):
+            return "research"
+        elif any(pattern in lower_response for pattern in conversation_patterns):
+            return "conversation"
+        elif len(response) < 100 and not any(pattern in lower_response for pattern in weather_patterns + research_patterns):
+            # Short responses without specific indicators are likely conversational
+            return "conversation"
+            
+        # Default to a generic type if no patterns match
+        return "generic"
 
     def get_conversation_history(self, channel_id: str, thread_ts: str) -> List[Dict[str, Any]]:
         """Get conversation history for a thread."""

@@ -18,6 +18,7 @@ class Settings:
         self._validate_and_set_variables()
         self._configure_crewai_environment()
         self._configure_redis()
+        self._configure_rag()
         self._log_initialization()
 
     def _load_environment(self) -> None:
@@ -100,6 +101,46 @@ class Settings:
         os.environ["OPENAI_API_TYPE"] = "open_ai"
         if self.openai_api_base and "azure" in self.openai_api_base.lower():
             os.environ["OPENAI_API_TYPE"] = "azure"
+
+    def _configure_rag(self) -> None:
+        """Configure RAG-specific settings."""
+        # Vector Database Configuration
+        self.vector_db_provider = os.getenv("VECTOR_DB_PROVIDER", "pinecone")
+        
+        # Pinecone Configuration
+        self.pinecone_api_key = os.getenv("PINECONE_API_KEY")
+        self.pinecone_environment = os.getenv("PINECONE_ENVIRONMENT")
+        self.pinecone_index = os.getenv("PINECONE_INDEX", "documents")
+        
+        # Chroma Configuration
+        self.chroma_persist_dir = os.getenv("CHROMA_PERSIST_DIR", "./chroma_db")
+        self.chroma_collection = os.getenv("CHROMA_COLLECTION", "documents")
+        
+        # Embedding Configuration
+        self.embedding_provider = os.getenv("EMBEDDING_PROVIDER", "openai")
+        self.openai_embedding_model = os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
+        self.st_model = os.getenv("ST_MODEL", "all-MiniLM-L6-v2")
+        
+        # Document Processing Configuration
+        self.chunk_size = int(os.getenv("CHUNK_SIZE", "1000"))
+        self.chunk_overlap = int(os.getenv("CHUNK_OVERLAP", "200"))
+        self.cache_enabled = os.getenv("CACHE_ENABLED", "true").lower() == "true"
+        self.cache_dir = os.getenv("CACHE_DIR", "./document_cache")
+        
+        # External Services Configuration
+        self.google_credentials = os.getenv("GOOGLE_CREDENTIALS")
+        self.dropbox_app_key = os.getenv("DROPBOX_APP_KEY")
+        self.dropbox_app_secret = os.getenv("DROPBOX_APP_SECRET")
+        self.dropbox_refresh_token = os.getenv("DROPBOX_REFRESH_TOKEN")
+        
+        logger.info(
+            "RAG configuration initialized",
+            vector_db_provider=self.vector_db_provider,
+            embedding_provider=self.embedding_provider,
+            chunk_size=self.chunk_size,
+            chunk_overlap=self.chunk_overlap,
+            cache_enabled=self.cache_enabled
+        )
 
     def _log_initialization(self) -> None:
         """Log initialization status and configuration."""

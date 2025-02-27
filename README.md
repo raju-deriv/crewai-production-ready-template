@@ -11,6 +11,7 @@ This template showcases a production-ready CrewAI implementation, featuring a re
 - **Containerization**: Docker support with multi-stage builds and production-grade process management.
 - **Extensible Integrations**: Modular design supporting multiple integration channels (Slack provided as example).
 - **Conversation History**: Redis-backed conversation tracking with automatic expiration.
+- **Retrieval-Augmented Generation (RAG)**: Vector database integration for knowledge base creation and querying.
 
 ## Features
 
@@ -29,6 +30,13 @@ This template showcases a production-ready CrewAI implementation, featuring a re
 - Production-grade logging configuration
 - Message serialization with msgpack for efficient storage
 - Automatic conversation cleanup with TTL
+- **RAG Functionality**:
+  - Vector database integration (Pinecone and Chroma)
+  - Document processing pipeline with chunking and caching
+  - Multiple embedding models (OpenAI and Sentence Transformers)
+  - Document loaders for various sources (Web, Files, Slack)
+  - Query processing and context enhancement
+  - Document management tools
 
 ## Setup
 
@@ -38,6 +46,7 @@ This template showcases a production-ready CrewAI implementation, featuring a re
 - OpenAI and Anthropic API keys
 - Slack app with Bot Token (`xoxb-...`) and App Token (`xapp-...`) (if using Slack integration)
 - Redis (provided via Docker Compose for production)
+- Vector database access (Pinecone API key or local Chroma DB)
 
 ### Local Installation
 1. **Clone the Repository**:
@@ -49,13 +58,17 @@ This template showcases a production-ready CrewAI implementation, featuring a re
 2. **Set Up Environment**:
    ```bash
    cp .env.template .env
-   # Edit .env with your configuration
+   # Edit .env with your configuration including RAG settings
    ```
 
 3. **Install Dependencies**:
    ```bash
    pip install -e .
    ```
+
+4. **Vector Database Setup**:
+   - For Pinecone: Create an account, create an index, and add your API key to `.env`
+   - For Chroma: The local directory will be created automatically
 
 ### Docker Deployment
 
@@ -141,6 +154,40 @@ The template is designed to be extensible. To add a new integration:
 3. Update the configuration in `src/config/settings.py`
 4. Add any new environment variables to `.env.template`
 5. Update tests as needed
+
+### RAG Configuration
+
+The template includes a comprehensive RAG system:
+
+1. **Vector Databases**:
+   - Pinecone: Cloud-based vector database (requires API key)
+   - Chroma: Local vector database (no API key required)
+   - Configurable via environment variables
+
+2. **Embedding Models**:
+   - OpenAI: High-quality embeddings (requires API key)
+   - Sentence Transformers: Local embeddings (no API key required)
+   - Configurable and switchable at runtime
+
+3. **Document Processing**:
+   - Automatic chunking with configurable size and overlap
+   - Document caching to avoid reprocessing
+   - Support for various file types (PDF, DOCX, TXT, images)
+
+4. **Document Sources**:
+   - Web pages: Load and process content from URLs
+   - Files: Load and process local files
+   - Slack: Load and process messages and files from Slack
+
+5. **Query Processing**:
+   - Query expansion for better retrieval
+   - Context enhancement for better responses
+   - Integration with LLMs for natural language responses
+
+6. **Document Management**:
+   - List, get, and delete documents
+   - View statistics about the knowledge base
+   - Filter and search documents
 
 ### Redis Configuration
 

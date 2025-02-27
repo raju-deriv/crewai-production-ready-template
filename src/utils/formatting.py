@@ -1,7 +1,16 @@
 import re
+from typing import Optional
 
-def format_slack_message(text: str, bold: bool = False) -> str:
-    """Format text for Slack mrkdwn compatibility with enhanced readability."""
+def format_slack_message(text: str, bold: bool = False, message_type: Optional[str] = None) -> str:
+    """
+    Format text for Slack mrkdwn compatibility with enhanced readability.
+    
+    Args:
+        text: The text to format
+        bold: Whether to apply bold formatting to the entire message
+        message_type: The type of message (e.g., 'conversation', 'research', 'weather')
+                     Used to determine the appropriate formatting style
+    """
     # Convert Markdown-style **bold** to Slack *bold*
     formatted_text = text.replace("**", "*")
     
@@ -13,9 +22,13 @@ def format_slack_message(text: str, bold: bool = False) -> str:
     lines = formatted_text.split("\n")
     formatted_lines = []
     
-    # Add a decorative header with color
-    formatted_lines.append(":zap: `Insights & Information` :bulb:")
-    formatted_lines.append("")
+    # Use simpler formatting for conversation messages
+    is_conversation = message_type == 'conversation'
+    
+    # Add a decorative header with color (except for conversation messages)
+    if not is_conversation:
+        formatted_lines.append(":zap: `Insights & Information` :bulb:")
+        formatted_lines.append("")
     
     # Process the content
     in_list = False
@@ -167,8 +180,9 @@ def format_slack_message(text: str, bold: bool = False) -> str:
         if in_list and not (line.startswith("- ") or line.startswith("* ")):
             in_list = False
     
-    # Add a more visually appealing footer with color
+    # Add a more visually appealing footer with color (except for conversation messages)
     formatted_lines.append("")
-    formatted_lines.append("> :speech_balloon: _Questions? Clarifications? Just ask!_ :sparkles:")
+    if not is_conversation:
+        formatted_lines.append("> :speech_balloon: _Questions? Clarifications? Just ask!_ :sparkles:")
     
     return "\n".join(formatted_lines)

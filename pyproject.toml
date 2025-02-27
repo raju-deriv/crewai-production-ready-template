@@ -13,7 +13,26 @@ dependencies = [
     "pytest==8.3.2",
     "pytest-asyncio==0.23.8",
     "redis[hiredis]==5.0.1",
-    "msgpack==1.0.7"
+    "msgpack==1.0.7",
+    # Vector databases
+    "pinecone-client==2.2.4",
+    "chromadb>=0.5.23",
+    # Embeddings
+    "sentence-transformers==2.2.2",
+    # Document processing
+    "langchain==0.1.11",
+    "langchain-community>=0.0.25",
+    "langchain-openai==0.0.8",
+    "unstructured==0.11.2",
+    "pypdf==3.17.4",
+    "python-docx==1.0.1",
+    "beautifulsoup4==4.12.3",
+    "requests==2.31.0",
+    "pytesseract==0.3.10",
+    # External services
+    "google-api-python-client==2.114.0",
+    "google-auth-oauthlib==1.2.0",
+    "dropbox==11.36.2"
 ]
 
 [build-system]

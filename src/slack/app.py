@@ -74,6 +74,15 @@ class SlackApp:
                 thread_ts = event.get("ts")  # App mentions don't have thread_ts
                 text = event.get("text", "")
                 
+                # Process the message using the message handler
+                self.message_handler.process_message(
+                    text=text,
+                    say=say,
+                    thread_ts=thread_ts,
+                    channel_id=channel_id,
+                    client=client
+                )
+                
                 logger.info("App mention processed successfully")
             except Exception as e:
                 logger.error(f"Error handling app mention: {str(e)}", exc_info=True)
