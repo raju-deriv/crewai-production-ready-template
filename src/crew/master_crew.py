@@ -78,7 +78,7 @@ class MasterCrew(BaseCrew):
             
             specialized_task = Task(
                 description=f"Ask for clarification\n\n{' '.join(clarification_context)}",
-                expected_output="A polite response asking for clarification",
+                expected_output="A polite response asking for clarification without mentioning that you are an AI or conversational agent",
                 agent=self.conversation_agent.create()
             )
             specialized_agent = self.conversation_agent
@@ -132,7 +132,7 @@ class MasterCrew(BaseCrew):
                 
                 specialized_task = Task(
                     description=f"Engage in conversation\n\n{' '.join(conversation_context)}",
-                    expected_output="A friendly and helpful conversational response",
+                    expected_output="A friendly and helpful response that directly addresses the user's query without mentioning that you are an AI or conversational agent",
                     agent=self.conversation_agent.create()
                 )
                 specialized_agent = self.conversation_agent
