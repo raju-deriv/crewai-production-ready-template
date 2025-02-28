@@ -21,7 +21,7 @@ class RAGQueryAgent:
             backstory="""You are an expert at finding and synthesizing information from the 
             organization's knowledge base. You can quickly locate relevant documents and 
             extract the most pertinent information to answer user questions accurately and concisely.""",
-            verbose=True,
+            verbose=False,
             allow_delegation=False,
             max_iter=3,
             llm=f"openai/{self.settings.openai_model}",

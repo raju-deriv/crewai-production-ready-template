@@ -55,6 +55,10 @@ class Settings:
             # Optional variables
             self.openai_api_base = os.getenv("OPENAI_API_BASE")
             self.anthropic_api_base = os.getenv("ANTHROPIC_API_BASE")
+            
+            # Role-based access control
+            admin_ids = os.getenv("ADMIN_USER_IDS", "")
+            self.admin_user_ids = [uid.strip() for uid in admin_ids.split(",") if uid.strip()]
 
             # Redis configuration
             self.redis_host = self._get_required("REDIS_HOST", "redis")
@@ -132,6 +136,11 @@ class Settings:
         self.dropbox_app_key = os.getenv("DROPBOX_APP_KEY")
         self.dropbox_app_secret = os.getenv("DROPBOX_APP_SECRET")
         self.dropbox_refresh_token = os.getenv("DROPBOX_REFRESH_TOKEN")
+        
+        # Feedback Agent Configuration
+        self.google_sheets_credentials_file = os.getenv("GOOGLE_SHEETS_CREDENTIALS_FILE")
+        self.google_service_account_email = os.getenv("GOOGLE_SERVICE_ACCOUNT_EMAIL")
+        self.feedback_spreadsheet_id = os.getenv("FEEDBACK_SPREADSHEET_ID")
         
         logger.info(
             "RAG configuration initialized",

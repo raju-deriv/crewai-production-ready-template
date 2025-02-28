@@ -2,7 +2,7 @@ import structlog
 import time
 import uuid
 from typing import Dict, List, Any, Optional, Union
-import pinecone
+from pinecone import Pinecone
 from src.rag.vector_db.base import VectorDBConnector
 from src.config.settings import Settings
 
@@ -26,13 +26,13 @@ class PineconeConnector(VectorDBConnector):
         """
         self.settings = settings
         self.api_key = settings.pinecone_api_key
-        self.environment = settings.pinecone_environment
         self.index_name = settings.pinecone_index
+        self.pc = None
         self.index = None
         self.is_connected = False
         
-        if not self.api_key or not self.environment:
-            logger.warning("Pinecone API key or environment not set")
+        if not self.api_key:
+            logger.warning("Pinecone API key not set")
     
     def connect(self) -> bool:
         """
@@ -42,25 +42,46 @@ class PineconeConnector(VectorDBConnector):
             bool: True if connection was successful, False otherwise.
         """
         try:
-            # Initialize Pinecone
-            pinecone.init(api_key=self.api_key, environment=self.environment)
+            # Check if API key is set
+            if not self.api_key:
+                logger.error("Pinecone API key not set")
+                self.is_connected = False
+                return False
             
-            # Check if index exists, create it if it doesn't
-            if self.index_name not in pinecone.list_indexes():
-                logger.info(f"Creating Pinecone index: {self.index_name}")
-                pinecone.create_index(
-                    name=self.index_name,
-                    dimension=1536,  # Default for OpenAI embeddings
-                    metric="cosine"
-                )
-                # Wait for index to be ready
-                time.sleep(1)
+            # Initialize Pinecone with detailed logging
+            logger.info("Initializing Pinecone")
+            self.pc = Pinecone(api_key=self.api_key)
             
-            # Connect to the index
-            self.index = pinecone.Index(self.index_name)
-            self.is_connected = True
-            logger.info("Connected to Pinecone", index=self.index_name)
-            return True
+            try:
+                # List indexes to check connection
+                logger.info("Listing Pinecone indexes")
+                indexes = self.pc.list_indexes()
+                index_names = [index.name for index in indexes]
+                logger.info(f"Available Pinecone indexes: {index_names}")
+                
+                # Check if index exists
+                if self.index_name not in index_names:
+                    logger.error(f"Pinecone index {self.index_name} does not exist")
+                    self.is_connected = False
+                    return False
+                
+                # Get the index configuration
+                index_info = next((idx for idx in indexes if idx.name == self.index_name), None)
+                if not index_info:
+                    logger.error(f"Could not find index info for {self.index_name}")
+                    self.is_connected = False
+                    return False
+                
+                # Connect to the index
+                logger.info(f"Connecting to Pinecone index: {self.index_name}")
+                self.index = self.pc.Index(host=index_info.host)
+                self.is_connected = True
+                logger.info("Connected to Pinecone", index=self.index_name)
+                return True
+            except Exception as inner_e:
+                logger.error("Failed to access Pinecone indexes", error=str(inner_e))
+                self.is_connected = False
+                return False
         except Exception as e:
             logger.error("Failed to connect to Pinecone", error=str(e))
             self.is_connected = False
@@ -75,6 +96,7 @@ class PineconeConnector(VectorDBConnector):
         """
         try:
             # Pinecone doesn't have an explicit disconnect method
+            self.pc = None
             self.index = None
             self.is_connected = False
             logger.info("Disconnected from Pinecone")
@@ -114,16 +136,31 @@ class PineconeConnector(VectorDBConnector):
                 doc_ids.append(doc_id)
                 
                 # Prepare metadata
-                metadata = doc.get('metadata', {})
+                metadata = doc.get('metadata', {}).copy()
+                
+                # Flatten nested metadata for Pinecone (it only supports simple types)
+                flattened_metadata = {}
+                for key, value in metadata.items():
+                    if isinstance(value, dict):
+                        # Convert nested dict to flat keys
+                        for sub_key, sub_value in value.items():
+                            flattened_metadata[f"{key}_{sub_key}"] = sub_value
+                    elif isinstance(value, (str, int, float, bool)) or (isinstance(value, list) and all(isinstance(x, str) for x in value)):
+                        # Keep simple types as is
+                        flattened_metadata[key] = value
+                    else:
+                        # Convert other types to string
+                        flattened_metadata[key] = str(value)
+                
                 # Add text to metadata for retrieval
                 if 'text' in doc and doc['text']:
-                    metadata['text'] = doc['text']
+                    flattened_metadata['text'] = doc['text']
                 
                 # Create vector
                 vector = {
                     'id': doc_id,
                     'values': doc['embedding'],
-                    'metadata': metadata
+                    'metadata': flattened_metadata
                 }
                 vectors.append(vector)
             
@@ -131,7 +168,10 @@ class PineconeConnector(VectorDBConnector):
             batch_size = 100
             for i in range(0, len(vectors), batch_size):
                 batch = vectors[i:i+batch_size]
-                self.index.upsert(vectors=batch)
+                self.index.upsert(
+                    vectors=batch,
+                    namespace="default"
+                )
             
             logger.info(f"Stored {len(vectors)} embeddings in Pinecone")
             return doc_ids
@@ -159,23 +199,25 @@ class PineconeConnector(VectorDBConnector):
         try:
             # Query the index
             results = self.index.query(
+                namespace="default",
                 vector=query_embedding,
                 top_k=top_k,
+                include_values=True,
                 include_metadata=True,
                 filter=filter
             )
             
             # Format results
             formatted_results = []
-            for match in results.matches:
+            for match in results['matches']:
                 # Extract text from metadata
-                text = match.metadata.get('text', '')
+                text = match['metadata'].get('text', '')
                 # Remove text from metadata to avoid duplication
-                metadata = {k: v for k, v in match.metadata.items() if k != 'text'}
+                metadata = {k: v for k, v in match['metadata'].items() if k != 'text'}
                 
                 formatted_results.append({
-                    'id': match.id,
-                    'score': match.score,
+                    'id': match['id'],
+                    'score': match['score'],
                     'metadata': metadata,
                     'text': text
                 })
@@ -202,7 +244,10 @@ class PineconeConnector(VectorDBConnector):
                 return False
         
         try:
-            self.index.delete(ids=[doc_id])
+            self.index.delete(
+                ids=[doc_id],
+                namespace="default"
+            )
             logger.info(f"Deleted document {doc_id} from Pinecone")
             return True
         except Exception as e:
@@ -226,25 +271,30 @@ class PineconeConnector(VectorDBConnector):
         
         try:
             # Fetch the vector
-            result = self.index.fetch(ids=[doc_id])
+            result = self.index.fetch(
+                ids=[doc_id],
+                namespace="default"
+            )
             
-            if doc_id not in result.vectors:
-                logger.warning(f"Document {doc_id} not found in Pinecone")
-                return None
+            # In Pinecone v6, the fetch response is a FetchResponse object with a vectors attribute
+            if hasattr(result, 'vectors') and hasattr(result.vectors, 'get'):
+                vector_data = result.vectors.get(doc_id)
+                if vector_data:
+                    # Extract text from metadata
+                    text = vector_data.metadata.get('text', '')
+                    # Remove text from metadata to avoid duplication
+                    metadata = {k: v for k, v in vector_data.metadata.items() if k != 'text'}
+                    
+                    return {
+                        'id': doc_id,
+                        'embedding': vector_data.values,
+                        'metadata': metadata,
+                        'text': text
+                    }
             
-            vector = result.vectors[doc_id]
-            
-            # Extract text from metadata
-            text = vector.metadata.get('text', '')
-            # Remove text from metadata to avoid duplication
-            metadata = {k: v for k, v in vector.metadata.items() if k != 'text'}
-            
-            return {
-                'id': doc_id,
-                'embedding': vector.values,
-                'metadata': metadata,
-                'text': text
-            }
+            # If we get here, we couldn't find the document
+            logger.warning(f"Document {doc_id} not found in Pinecone")
+            return None
         except Exception as e:
             logger.error(f"Failed to get document {doc_id} from Pinecone", error=str(e))
             return None
@@ -257,9 +307,14 @@ class PineconeConnector(VectorDBConnector):
             List[str]: List of index names.
         """
         try:
-            indexes = pinecone.list_indexes()
-            logger.info(f"Listed {len(indexes)} indexes in Pinecone")
-            return indexes
+            if not self.pc:
+                if not self.connect():
+                    return []
+            
+            indexes = self.pc.list_indexes()
+            index_names = [index.name for index in indexes]
+            logger.info(f"Listed {len(index_names)} indexes in Pinecone")
+            return index_names
         except Exception as e:
             logger.error("Failed to list indexes in Pinecone", error=str(e))
             return []

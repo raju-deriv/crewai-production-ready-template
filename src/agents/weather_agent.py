@@ -19,7 +19,7 @@ class WeatherAgent:
             backstory="""You are a meteorologist with expertise in weather forecasting. 
             You have access to professional weather data and can provide detailed weather 
             information for any location.""",
-            verbose=True,
+            verbose=False,
             allow_delegation=False,
             max_iter=2,
             llm=f"openai/{self.settings.openai_model}",

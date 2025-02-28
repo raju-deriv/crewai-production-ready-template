@@ -20,7 +20,7 @@ class MasterAgent:
             backstory="""You are an intelligent coordinator with expertise in understanding user 
             requests and determining which specialized agent can best handle them. You have deep 
             understanding of each agent's capabilities and can route requests effectively.""",
-            verbose=True,
+            verbose=False,
             allow_delegation=True,
             max_iter=3,
             llm=f"openai/{self.settings.openai_model}",

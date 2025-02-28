@@ -56,7 +56,8 @@ class ChromaConnector(VectorDBConnector):
             try:
                 self.collection = self.client.get_collection(name=self.collection_name)
                 logger.info(f"Connected to existing Chroma collection: {self.collection_name}")
-            except ValueError:
+            except Exception as e:
+                logger.info(f"Collection {self.collection_name} does not exist, creating it")
                 # Collection doesn't exist, create it
                 self.collection = self.client.create_collection(name=self.collection_name)
                 logger.info(f"Created new Chroma collection: {self.collection_name}")

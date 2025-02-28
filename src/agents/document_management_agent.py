@@ -24,7 +24,7 @@ class DocumentManagementAgent:
             You can ingest documents from various sources, organize them effectively, and ensure
             the knowledge base remains up-to-date and relevant. You understand how to process
             different types of documents and extract valuable information from them.""",
-            verbose=True,
+            verbose=False,
             allow_delegation=False,
             max_iter=3,
             llm=f"openai/{self.settings.openai_model}",

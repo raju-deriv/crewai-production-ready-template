@@ -15,8 +15,16 @@ class IntentAnalyzerTool(BaseTool):
     description: str = """
     Analyze the user's request to determine which specialized agent should handle it.
     Consider the full context including any conversation history.
-    Return a structured analysis with intent, parameters, confidence, and reasoning.
-    If the intent is unclear or the confidence is low, suggest a clarification question.
+    Return a structured analysis with intent parameters confidence and reasoning.
+    If the intent is unclear or the confidence is low suggest a clarification question.
+    
+    Possible intents include:
+    - weather: For weather information requests
+    - rag_query: For knowledge base queries
+    - doc_management: For document management operations
+    - research: For research on specific topics
+    - feedback: For collecting user feedback through structured questions
+    - conversation: For general conversation and ambiguous requests
     """
     args_schema: type[BaseModel] = IntentAnalyzerInput
 
@@ -60,7 +68,13 @@ class IntentAnalyzerTool(BaseTool):
            - Good for adding, updating, or removing documents
            - Examples: "Add this PDF to the knowledge base", "Index this website", "Remove document X"
 
-        5. Conversation Agent
+        5. Feedback Agent
+           - Collects user feedback through structured questions
+           - Saves feedback to Google Sheets
+           - Good for feedback collection requests
+           - Examples: "I want to give feedback", "Can I provide some feedback?", "I'd like to share my thoughts"
+
+        6. Conversation Agent
            - Handles general conversation, greetings, and ambiguous requests
            - Good for casual interactions and clarifying user intentions
            - Examples: "Hello", "How are you?", "Thanks", "I'm not sure what I need"
@@ -77,7 +91,7 @@ class IntentAnalyzerTool(BaseTool):
         
         Return your analysis in this exact JSON format:
         {{
-            "intent": "research, weather, rag_query, doc_management, or conversation",
+            "intent": "research, weather, rag_query, doc_management, feedback, or conversation",
             "params": {{
                 "topic" or "location" or "query" or "document_source" or "message": "extracted parameter",
                 "document_type": "optional document type for doc_management"

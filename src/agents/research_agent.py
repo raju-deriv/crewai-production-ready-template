@@ -16,9 +16,9 @@ class ResearchAgent:
             goal="Conduct thorough research on given topics",
             backstory="""You're a skilled researcher with expertise in finding reliable information.
             You can analyze topics deeply and provide comprehensive, well-structured information.""",
-            verbose=True,
+            verbose=False,
             allow_delegation=False,
-            max_iter=3,
+            max_iter=2,
             llm=f"openai/{self.settings.openai_model}",
             tools=[self.research_tool]
         )

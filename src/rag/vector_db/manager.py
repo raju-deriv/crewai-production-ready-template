@@ -80,12 +80,28 @@ class VectorDBManager:
             success = self.current_connector.connect()
             if success:
                 logger.info(f"Switched to vector database: {db_type}")
+                return True
             else:
                 logger.error(f"Failed to connect to vector database: {db_type}")
-            
-            return success
+                
+                # If Pinecone fails, try to fall back to ChromaDB
+                if db_type == 'pinecone':
+                    logger.warning("Falling back to ChromaDB")
+                    return self.switch_db('chroma')
+                
+                return False
         except Exception as e:
             logger.error(f"Error switching to vector database: {db_type}", error=str(e))
+            
+            # If Pinecone fails with an exception, try to fall back to ChromaDB
+            if db_type == 'pinecone':
+                logger.warning("Falling back to ChromaDB after exception")
+                try:
+                    return self.switch_db('chroma')
+                except Exception as fallback_e:
+                    logger.error(f"Failed to fall back to ChromaDB: {str(fallback_e)}")
+                    return False
+            
             return False
     
     def get_connector(self) -> Optional[VectorDBConnector]:

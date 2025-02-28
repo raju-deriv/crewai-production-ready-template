@@ -2,6 +2,8 @@ from src.slack.app import SlackApp
 from src.config.settings import Settings
 from src.crew.master_crew import MasterCrew
 from src.utils.logging import configure_logging
+from src.auth.role_manager import RoleManager
+from src.storage.approval_store import ApprovalStore
 
 import sys
 import structlog
@@ -25,10 +27,28 @@ def main() -> None:
             logger.error("Failed to load settings", error=str(e))
             sys.exit(1)
         
-        # Initialize master crew
+        # Initialize role manager and approval store
         try:
-            crew = MasterCrew(settings)
-            logger.info("Master crew initialized successfully")
+            role_manager = RoleManager(settings)
+            logger.info("Role manager initialized successfully")
+            
+            approval_store = ApprovalStore(
+                host=settings.redis_host,
+                port=settings.redis_port,
+                password=settings.redis_password,
+                db=settings.redis_db,
+                ssl=settings.redis_ssl,
+                ttl=settings.redis_ttl
+            )
+            logger.info("Approval store initialized successfully")
+        except Exception as e:
+            logger.error("Failed to initialize role manager or approval store", error=str(e), exc_info=True)
+            sys.exit(1)
+        
+        # Initialize master crew with role manager and approval store
+        try:
+            crew = MasterCrew(settings, role_manager=role_manager, approval_store=approval_store)
+            logger.info("Master crew initialized successfully with role-based access control")
         except Exception as e:
             logger.error("Failed to initialize master crew", error=str(e), exc_info=True)
             sys.exit(1)

@@ -56,3 +56,7 @@ Thumbs.db
 *.zip
 *.tar.gz
 *.tgz
+
+# Document Cache and Chroma DB
+chroma_db/
+document_cache/

@@ -15,7 +15,7 @@ dependencies = [
     "redis[hiredis]==5.0.1",
     "msgpack==1.0.7",
     # Vector databases
-    "pinecone-client==2.2.4",
+    "pinecone==6.0.0",
     "chromadb>=0.5.23",
     # Embeddings
     "sentence-transformers==2.2.2",
@@ -32,6 +32,7 @@ dependencies = [
     # External services
     "google-api-python-client==2.114.0",
     "google-auth-oauthlib==1.2.0",
+    "gspread==6.0.2",
     "dropbox==11.36.2"
 ]
 

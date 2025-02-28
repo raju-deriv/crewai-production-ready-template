@@ -127,33 +127,46 @@ def test_document_ingestion_tool(settings: Settings, mock_embedding_service, moc
         assert "Successfully ingested" in result
         assert "https://example.com" in result
 
-def test_document_management_tool(settings: Settings, mock_embedding_service, mock_vector_db_manager):
+@pytest.fixture
+def mock_role_manager(settings: Settings):
+    """Fixture for a mock RoleManager."""
+    with patch('src.auth.role_manager.RoleManager') as mock_class:
+        mock_instance = Mock()
+        # Configure the mock to always return True for permission checks
+        mock_instance.has_permission.return_value = True
+        mock_instance.can_perform_operation.return_value = True
+        mock_instance.is_admin.return_value = True
+        mock_class.return_value = mock_instance
+        yield mock_instance
+
+def test_document_management_tool(settings: Settings, mock_embedding_service, mock_vector_db_manager, mock_role_manager):
     """Test DocumentManagementTool functionality."""
-    tool = DocumentManagementTool(settings)
+    # Create a tool with role manager
+    tool = DocumentManagementTool(settings, role_manager=mock_role_manager)
     
-    # Test listing documents
-    list_result = tool._run("list")
+    # Test listing documents with admin user
+    list_result = tool._run("list", user_id="admin_user")
     
     # Check that the tool returned a list of documents
     assert isinstance(list_result, str)
     assert "Found" in list_result
     
     # Test getting a document
-    get_result = tool._run("get", "doc_123")
+    get_result = tool._run("get", doc_id="doc_123", user_id="admin_user")
     
     # Check that the tool returned the document
     assert isinstance(get_result, str)
     assert "Document doc_123" in get_result
     
     # Test deleting a document
-    delete_result = tool._run("delete", "doc_123")
+    delete_result = tool._run("delete", doc_id="doc_123", user_id="admin_user")
     
     # Check that the tool returned a success message
     assert isinstance(delete_result, str)
     assert "Successfully deleted" in delete_result
     
     # Test getting stats
-    stats_result = tool._run("stats")
+    stats_result = tool._run("stats", user_id="admin_user")
     
     # Check that the tool returned stats
     assert isinstance(stats_result, str)

@@ -3,12 +3,16 @@ from typing import Dict, Any, Optional
 import structlog
 import json
 from src.config.settings import Settings
+from src.auth.role_manager import RoleManager
+from src.storage.approval_store import ApprovalStore
+from src.tools.document_management_tool import DocumentManagementTool
 from src.agents.master_agent import MasterAgent
 from src.agents.research_agent import ResearchAgent
 from src.agents.weather_agent import WeatherAgent
 from src.agents.rag_query_agent import RAGQueryAgent
 from src.agents.document_management_agent import DocumentManagementAgent
 from src.agents.conversation_agent import ConversationAgent
+from src.agents.feedback_agent import FeedbackAgent
 from src.crew.base_crew import BaseCrew
 
 logger = structlog.get_logger(__name__)
@@ -16,15 +20,44 @@ logger = structlog.get_logger(__name__)
 class MasterCrew(BaseCrew):
     """Master crew that routes requests to appropriate specialized crews."""
 
-    def __init__(self, settings: Settings) -> None:
+    def __init__(self, settings: Settings, role_manager: Optional[RoleManager] = None, 
+                 approval_store: Optional[ApprovalStore] = None) -> None:
         super().__init__(settings)
+        self.role_manager = role_manager
+        self.approval_store = approval_store
         self.master_agent = MasterAgent(settings)
         self.research_agent = ResearchAgent(settings)
         self.weather_agent = WeatherAgent(settings)
         self.rag_query_agent = RAGQueryAgent(settings)
-        self.document_management_agent = DocumentManagementAgent(settings)
+        
+        # Initialize document management agent with role manager and approval store
+        self.document_management_agent = self._create_document_management_agent()
+        
         self.conversation_agent = ConversationAgent(settings)
+        self.feedback_agent = FeedbackAgent(settings)
         self.confidence_threshold = 0.7
+        
+    def _create_document_management_agent(self) -> DocumentManagementAgent:
+        """
+        Create a document management agent with role-based access control.
+        
+        Returns:
+            DocumentManagementAgent: The configured document management agent
+        """
+        agent = DocumentManagementAgent(self.settings)
+        
+        # If role manager and approval store are available, update the document management tool
+        if self.role_manager and self.approval_store:
+            # Replace the default document management tool with one that has RBAC
+            doc_tool = DocumentManagementTool(
+                settings=self.settings,
+                role_manager=self.role_manager,
+                approval_store=self.approval_store
+            )
+            agent.document_management_tool = doc_tool
+            logger.info("Initialized DocumentManagementTool with role-based access control")
+        
+        return agent
 
     def create_crew(self, inputs: dict[str, str]) -> Crew:
         """Create a crew with the master agent and appropriate specialized agents."""
@@ -123,6 +156,28 @@ class MasterCrew(BaseCrew):
                     agent=self.document_management_agent.create()
                 )
                 specialized_agent = self.document_management_agent
+            elif intent == "feedback":
+                # Extract user_id and channel_id from inputs if available
+                user_id = inputs.get("user_id", "unknown_user")
+                channel_id = inputs.get("channel_id", "unknown_channel")
+                
+                feedback_context = [
+                    "The user wants to provide feedback.",
+                    f"User ID: {user_id}",
+                    f"Channel ID: {channel_id}",
+                    f"Previous conversation: {self._format_history(conversation_history)}",
+                    f"Original request: {request}"
+                ]
+                
+                from src.tasks.feedback_task import create_feedback_task
+                specialized_task = create_feedback_task(
+                    agent=self.feedback_agent,
+                    user_id=user_id,
+                    channel_id=channel_id,
+                    initial_message=request
+                )
+                specialized_agent = self.feedback_agent
+                
             elif intent == "conversation":
                 conversation_context = [
                     "The user is engaging in general conversation.",
@@ -200,7 +255,8 @@ class MasterCrew(BaseCrew):
                 "rag_query": "rag_query",
                 "doc_management": "doc_management",
                 "research": "research",
-                "conversation": "conversation"
+                "conversation": "conversation",
+                "feedback": "feedback"
             }
             
             for key, value in intent_mapping.items():
